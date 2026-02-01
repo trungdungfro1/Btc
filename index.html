@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phân Tích Bitcoin Real-time</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .price-display {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .current-price {
+            font-size: 36px;
+            font-weight: bold;
+            color: #f7931a;
+        }
+
+        .price-change {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .price-change.up {
+            background: #10b981;
+            color: white;
+        }
+
+        .price-change.down {
+            background: #ef4444;
+            color: white;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+            border-bottom: 2px solid #f7931a;
+            padding-bottom: 10px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+
+        .indicator {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            margin: 8px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #f7931a;
+        }
+
+        .indicator-name {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .indicator-value {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .prediction-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .prediction-percentage {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+
+        .prediction-label {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .signal {
+            display: inline-block;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 20px;
+            margin-top: 15px;
+        }
+
+        .signal.buy {
+            background: #10b981;
+        }
+
+        .signal.sell {
+            background: #ef4444;
+        }
+
+        .signal.hold {
+            background: #f59e0b;
+        }
+
+        .update-time {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.active {
+            background: #10b981;
+        }
+
+        .status-indicator.loading {
+            background: #f59e0b;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .info-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .connection-status {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .auto-badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <span class="status-indicator" id="statusDot"></span>
+                Phân Tích Bitcoin Real-time
+                <span class="auto-badge">⚡ AUTO UPDATE</span>
+            </h1>
+            <div class="price-display">
+                <div class="current-price" id="currentPrice">Đang tải...</div>
+                <div class="price-change" id="priceChange">--</div>
+            </div>
+            <div class="connection-status" id="connectionStatus">Đang kết nối API...</div>
+            <div class="update-time" id="updateTime">--</div>
+        </div>
+
+        <div class="grid">
+            <div class="card" style="grid-column: 1 / -1;">
+                <h2>📈 Biểu Đồ Giá Bitcoin (1 Giờ)</h2>
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📊 Chỉ Số Kỹ Thuật</h2>
+                <div id="technicalIndicators">
+                    <div class="indicator">
+                        <span class="indicator-name">RSI (14)</span>
+                        <span class="indicator-value" id="rsi">--</span>
+                    </div>
+                    <div class="indicator">
+                        <span class="indicator-name">MA 20</span>
+                        <span class="indicator-value" id="ma20">--</span>
+                    </div>
+                    <div class="indicator">
+                        <span class="indicator-name">MA 50</span>
+                        <span class="indicator-value" id="ma50">--</span>
+                    </div>
+                    <div class="indicator">
+                        <span class="indicator-name">EMA 12</span>
+                        <span class="indicator-value" id="ema12">--</span>
+                    </div>
+                    <div class="indicator">
+                        <span class="indicator-name">MACD</span>
+                        <span class="indicator-value" id="macd">--</span>
+                    </div>
+                    <div class="indicator">
+                        <span class="indicator-name">Bollinger Bands</span>
+                        <span class="indicator-value" id="bb">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🎯 Dự Đoán Xu Hướng</h2>
+                <div class="prediction-box">
+                    <div class="prediction-label">Xác Suất Tăng Giá</div>
+                    <div class="prediction-percentage" id="upProbability">--%</div>
+                    <div class="prediction-label">Xác Suất Giảm Giá</div>
+                    <div class="prediction-percentage" id="downProbability">--%</div>
+                    <div class="signal" id="signal">ĐANG PHÂN TÍCH</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>💰 Thông Tin Thị Trường 24h</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Giá Cao Nhất</div>
+                        <div class="info-value" id="high24">--</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Giá Thấp Nhất</div>
+                        <div class="info-value" id="low24">--</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Khối Lượng (BTC)</div>
+                        <div class="info-value" id="volume24">--</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Thay Đổi 24h</div>
+                        <div class="info-value" id="change24">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
